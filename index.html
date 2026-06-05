@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AI Game Master RPG</title>
+
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#0d0714">
+  <meta name="description" content="Превратите свои тренировки в RPG-приключение с ИИ Гейм-Мастером">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="icon" type="image/svg+xml" href="logo.svg">
+  <script type="module" crossorigin src="./assets/index-B0EonwjC.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-D2frFF9A.css">
+<link rel="manifest" href="./manifest.webmanifest"></head>
+<body>
+
+  <!-- Background overlay for flashes/shakes -->
+  <div id="vignette"></div>
+
+  <!-- Canvas for reward/damage particles -->
+  <canvas id="particleCanvas"></canvas>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="logo-area">
+      <svg class="header-logo-svg" viewBox="0 0 512 512" width="26" height="26">
+        <path d="M256,60 L380,120 C380,260 330,360 256,440 C182,360 132,260 132,120 Z" fill="#7b2cbf" stroke="#ffb703" stroke-width="4"/>
+        <path d="M256,90 L256,360" stroke="#ffb703" stroke-width="3"/>
+      </svg>
+      <h1>AI Game Master</h1>
+    </div>
+    <div class="header-actions">
+      <button id="soundToggleBtn" class="action-btn" title="Вкл/Выкл звук">
+        <span class="btn-icon">🔊</span>
+      </button>
+      <button id="debugToggleBtn" class="action-btn" title="Отладочная панель">
+        <span class="btn-icon">🛠️</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Tab Container -->
+  <main class="app-layout">
+
+    <!-- ===== TAB 1: ГЕРОЙ ===== -->
+    <section id="panel-hero" class="layout-panel active-tab">
+
+      <!-- Character Card -->
+      <div class="card character-card">
+        <!-- Status Badges -->
+        <div class="badge-row" id="active-badges"></div>
+
+        <!-- Level & Class Title -->
+        <div class="char-header">
+          <div class="level-badge">
+            <span class="lbl">LVL</span>
+            <span id="char-level" class="val">1</span>
+          </div>
+          <div class="name-block">
+            <h2 id="char-title">Странник</h2>
+            <p id="char-class" class="subtitle">Ученик Гейм-Мастера</p>
+          </div>
+        </div>
+
+        <!-- Avatar Frame -->
+        <div class="avatar-frame">
+          <div class="avatar-glow"></div>
+          <div class="avatar-visual" id="avatar-render">
+            <img id="avatar-img" class="avatar-img-element" src="./avatar_tier1.png" alt="Аватар">
+            <!-- Equipment overlays — all slots -->
+            <img id="avatar-gear-helmet" class="avatar-gear-overlay slot-helmet hidden" src="" alt="Шлем">
+            <img id="avatar-gear-weapon" class="avatar-gear-overlay slot-weapon hidden" src="" alt="Оружие">
+            <img id="avatar-gear-offhand" class="avatar-gear-overlay slot-offhand hidden" src="" alt="Щит">
+            <img id="avatar-gear-neck" class="avatar-gear-overlay slot-neck hidden" src="" alt="Амулет">
+            <img id="avatar-gear-hands" class="avatar-gear-overlay slot-hands hidden" src="" alt="Перчатки">
+            <img id="avatar-gear-feet" class="avatar-gear-overlay slot-feet hidden" src="" alt="Сапоги">
+            <div id="avatar-chains" class="avatar-chains-overlay hidden"></div>
+          </div>
+          <div id="rust-decay-overlay" class="decay-overlay hidden">
+            <div class="decay-pulse"></div>
+            <span>РЖАВЧИНА: <strong id="rust-days">1 день</strong></span>
+          </div>
+        </div>
+
+        <!-- Primary Stats Bars -->
+        <div class="stats-bars">
+          <div class="stat-bar-group hp">
+            <div class="stat-label">
+              <span>❤️ Здоровье (HP)</span>
+              <span id="val-hp">100 / 100</span>
+            </div>
+            <div class="bar-outer">
+              <div id="bar-hp" class="bar-inner" style="width: 100%;"></div>
+            </div>
+          </div>
+          <div class="stat-bar-group xp">
+            <div class="stat-label">
+              <span>✨ Опыт (XP)</span>
+              <span id="val-xp">0 / 100</span>
+            </div>
+            <div class="bar-outer">
+              <div id="bar-xp" class="bar-inner" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Attributes Grid -->
+        <div class="attributes-grid">
+          <div class="attr-box" data-attr="str">
+            <span class="attr-icon">💪</span>
+            <span class="attr-name">Сила</span>
+            <strong id="val-str">10</strong>
+            <div class="attr-xp" id="xp-str">0 XP</div>
+          </div>
+          <div class="attr-box" data-attr="end">
+            <span class="attr-icon">🏃</span>
+            <span class="attr-name">Выносл</span>
+            <strong id="val-end">10</strong>
+            <div class="attr-xp" id="xp-end">0 XP</div>
+          </div>
+          <div class="attr-box" data-attr="agi">
+            <span class="attr-icon">🧘</span>
+            <span class="attr-name">Ловкость</span>
+            <strong id="val-agi">10</strong>
+            <div class="attr-xp" id="xp-agi">0 XP</div>
+          </div>
+        </div>
+
+        <!-- Currencies Panel -->
+        <div class="currency-row">
+          <div class="currency-box gold">
+            <span class="icon">🪙</span>
+            <div class="lbl">Золото</div>
+            <strong id="val-gold">50</strong>
+          </div>
+          <div class="currency-box will">
+            <span class="icon">🔮</span>
+            <div class="lbl">Воля</div>
+            <strong id="val-will">0</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inventory Panel -->
+      <div class="card inventory-card">
+        <h3>🎒 Снаряжение и Инвентарь</h3>
+        <p class="section-desc">Нажми на предмет в сумке, чтобы экипировать. Нажми на слот — чтобы снять.</p>
+        <div class="inventory-slots-grid-7">
+          <div class="inv-slot" id="slot-helmet" data-slot="helmet">
+            <span class="slot-placeholder">🪖<br><span class="slot-name">Шлем</span></span>
+          </div>
+          <div class="inv-slot" id="slot-weapon" data-slot="weapon">
+            <span class="slot-placeholder">⚔️<br><span class="slot-name">Оружие</span></span>
+          </div>
+          <div class="inv-slot" id="slot-offhand" data-slot="offhand">
+            <span class="slot-placeholder">🛡️<br><span class="slot-name">Щит</span></span>
+          </div>
+          <div class="inv-slot" id="slot-hands" data-slot="hands">
+            <span class="slot-placeholder">🥊<br><span class="slot-name">Перчатки</span></span>
+          </div>
+          <div class="inv-slot" id="slot-neck" data-slot="neck">
+            <span class="slot-placeholder">🔮<br><span class="slot-name">Амулет</span></span>
+          </div>
+          <div class="inv-slot" id="slot-feet" data-slot="feet">
+            <span class="slot-placeholder">🥾<br><span class="slot-name">Сапоги</span></span>
+          </div>
+          <div class="inv-slot" id="slot-ring" data-slot="ring">
+            <span class="slot-placeholder">💍<br><span class="slot-name">Кольцо</span></span>
+          </div>
+        </div>
+        <div class="inventory-bag">
+          <h4>Сумка:</h4>
+          <div class="bag-items-grid" id="bag-items-container"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TAB 2: КОНСОЛЬ ===== -->
+    <section id="panel-console" class="layout-panel">
+
+      <!-- Game Master Dialog -->
+      <div class="card gm-card">
+        <div class="gm-face-area">
+          <div class="gm-avatar-eye left"></div>
+          <div class="gm-avatar-eye right"></div>
+          <div class="gm-title">ГЕЙМ-МАСТЕР</div>
+        </div>
+        <div class="gm-bubble">
+          <p id="gm-text">Приветствую, искатель приключений. Опиши свои деяния или признайся во грехе. Я оценю твой путь.</p>
+        </div>
+      </div>
+
+      <!-- User Action Input -->
+      <div class="card input-card">
+        <h3>Ввод активности</h3>
+        <form id="gm-submit-form" onsubmit="return false;">
+          <div class="textarea-wrapper">
+            <textarea id="action-input" placeholder="Например: Пробежал 5 км в темпе 5:30 или отжался 50 раз..." rows="3"></textarea>
+          </div>
+          <div class="input-actions-row">
+            <div class="media-upload-area" id="media-drop-zone">
+              <input type="file" id="media-file" accept="image/*" class="hidden-input">
+              <label for="media-file" class="media-label" id="media-label-text">
+                <span class="icon">📷</span> Скриншот
+              </label>
+              <div id="media-preview-container" class="hidden">
+                <img id="media-preview-img" src="" alt="preview">
+                <button type="button" id="remove-media-btn" class="mini-btn">&times;</button>
+              </div>
+            </div>
+            <button type="submit" id="submit-activity-btn" class="btn-primary glow-button">Отправить ГМ</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Action Timeline -->
+      <div class="card timeline-card">
+        <h3>📜 Летопись Аватара</h3>
+        <div class="timeline-container" id="timeline-list"></div>
+      </div>
+    </section>
+
+    <!-- ===== TAB 3: ЗАДАНИЯ ===== -->
+    <section id="panel-quests" class="layout-panel">
+
+      <!-- Daily Contracts -->
+      <div class="card quests-card">
+        <div class="quests-header">
+          <h3>📋 Ежедневные Контракты</h3>
+          <div id="dailies-reset-timer" class="reset-timer">Обновятся в полночь</div>
+        </div>
+        <p class="section-desc">Выполни все 3 контракта, чтобы не дать Боссу Лени набраться сил!</p>
+        <div id="dailies-container" class="dailies-list">
+          <!-- Filled dynamically -->
+        </div>
+        <div class="dailies-progress-row">
+          <span id="dailies-count-text" class="progress-label">0 / 3 выполнено</span>
+          <div class="dailies-progress-bar-outer">
+            <div id="dailies-progress-bar" class="dailies-progress-bar-inner" style="width: 0%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Weekly Weigh-In Quest -->
+      <div class="card weekly-quest-card">
+        <h3>📊 Еженедельный Квест: Контроль Тела</h3>
+        <div id="weigh-in-status" class="weigh-in-status-text"></div>
+        <p class="section-desc">Раз в неделю вводи параметры тела. Награда: +30 XP и +15 GP. Просрочка — Босс получает +15% ярости!</p>
+        <div class="metrics-form">
+          <div class="form-group">
+            <label class="form-label">📏 Рост (см)</label>
+            <input type="number" id="input-height" placeholder="175" class="custom-input" min="100" max="250">
+          </div>
+          <div class="form-group">
+            <label class="form-label">⚖️ Вес (кг)</label>
+            <input type="number" id="input-weight" placeholder="75" class="custom-input" min="30" max="300">
+          </div>
+        </div>
+        <button id="submit-metrics-btn" class="btn-primary btn-full">✅ Сохранить показания</button>
+      </div>
+
+      <!-- Confession / Pure Will -->
+      <div class="card shrine-card">
+        <h3>🏛️ Алтарь Воли</h3>
+        <div class="shrine-segmented">
+          <button id="tab-confess" class="shrine-seg-btn active">Исповедь</button>
+          <button id="tab-shop" class="shrine-seg-btn">Магазин</button>
+        </div>
+
+        <!-- Confession -->
+        <div class="shrine-sub active" id="sub-confession">
+          <p class="section-desc">Если соблюдал дисциплину — заявь о Чистой Воле (+15 WP). Если согрешил — исповедуйся (-25 HP, +10 WP).</p>
+          <div class="pure-will-row">
+            <button id="declare-pure-will-btn" class="btn-success-glowing btn-full">⚡ Заявить о Дне Чистой Воли (+15 WP)</button>
+          </div>
+          <div class="confess-divider">— Исповедь слабостей —</div>
+          <textarea id="confess-input" placeholder="Опиши свой проступок честно..." rows="2"></textarea>
+          <button id="submit-confession-btn" class="btn-warning-outline">🙏 Совершить Исповедь (-25 HP, +10 WP)</button>
+        </div>
+
+        <!-- Shop -->
+        <div class="shrine-sub" id="sub-shop">
+          <div class="shop-grid">
+            <div class="shop-item" data-item="frost-shield">
+              <div class="item-title">❄️ Заморозка Энтропии</div>
+              <p>Останавливает таймер «Ржавчины» на 24 часа.</p>
+              <button class="btn-purchase" data-cost="15" data-currency="will">Купить за 15 WP</button>
+            </div>
+            <div class="shop-item" data-item="shadow-shield">
+              <div class="item-title">🛡️ Защитный Амулет</div>
+              <p>Ослабляет удар Теневого Босса на 50%.</p>
+              <button class="btn-purchase" data-cost="20" data-currency="will">Купить за 20 WP</button>
+            </div>
+            <div class="shop-item" data-item="will-potion">
+              <div class="item-title">🧪 Зелье Здоровья</div>
+              <p>Мгновенное восстановление 50 HP.</p>
+              <button class="btn-purchase" data-cost="150" data-currency="gold">Купить за 150 GP</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Item Catalog Card -->
+      <div class="card catalog-card">
+        <h3>📖 Каталог Снаряжения</h3>
+        <p class="section-desc">Всё доступное снаряжение. Нажми на предмет, чтобы узнать условие разблокировки.</p>
+        <div class="catalog-filters" id="catalog-filters">
+          <button class="catalog-filter active" data-filter="all">Все</button>
+          <button class="catalog-filter" data-filter="weapon">⚔️</button>
+          <button class="catalog-filter" data-filter="offhand">🛡️</button>
+          <button class="catalog-filter" data-filter="helmet">🪖</button>
+          <button class="catalog-filter" data-filter="feet">🥾</button>
+          <button class="catalog-filter" data-filter="neck">🔮</button>
+          <button class="catalog-filter" data-filter="hands">🥊</button>
+          <button class="catalog-filter" data-filter="ring">💍</button>
+        </div>
+        <div id="catalog-container" class="catalog-list">
+          <!-- Filled by main.js -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TAB 4: УГРОЗЫ ===== -->
+    <section id="panel-threats" class="layout-panel">
+
+      <!-- Shadow Boss Section -->
+      <div class="card boss-card">
+        <h3>💀 Теневой Босс Лени</h3>
+        <div class="boss-arena">
+          <div class="boss-visual-wrapper">
+            <div class="boss-smoke" id="boss-smoke-effect"></div>
+            <img id="boss-img" class="boss-img-element" src="boss_stage1.png" alt="Теневой Босс">
+          </div>
+          <div class="boss-stats">
+            <div class="boss-metric">
+              <span>Ярость лени (сила босса):</span>
+              <strong id="boss-rage-percent">30%</strong>
+            </div>
+            <div class="boss-bar-outer">
+              <div id="boss-rage-bar" class="boss-bar-inner" style="width: 30%;"></div>
+            </div>
+            <p id="boss-desc" class="mini-desc">Босс питается днями бездействия. Воскресный бой решит твою судьбу!</p>
+            <button id="trigger-boss-fight-btn" class="btn-danger-glowing">⚔️ Начать Битву Воли</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Boss Mechanics Info -->
+      <div class="card boss-info-card">
+        <h3>📖 Механики Штрафов</h3>
+        <div class="mechanics-list">
+          <div class="mechanic-row">
+            <span class="mechanic-icon">😴</span>
+            <div class="mechanic-text">
+              <strong>24ч без тренировок</strong>
+              <span>Босс +20% ярости, ржавчина на аватаре</span>
+            </div>
+          </div>
+          <div class="mechanic-row">
+            <span class="mechanic-icon">📋</span>
+            <div class="mechanic-text">
+              <strong>Невыполненный контракт</strong>
+              <span>Босс +10% за каждый просроченный</span>
+            </div>
+          </div>
+          <div class="mechanic-row">
+            <span class="mechanic-icon">⚖️</span>
+            <div class="mechanic-text">
+              <strong>Просрочен взвешивания-квест</strong>
+              <span>Босс +15% ярости</span>
+            </div>
+          </div>
+          <div class="mechanic-row">
+            <span class="mechanic-icon">🍔</span>
+            <div class="mechanic-text">
+              <strong>Плохие привычки (ГМ-анализ)</strong>
+              <span>Урон HP + Босс усиливается</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== TAB 5: НАСТРОЙКИ ===== -->
+    <section id="panel-settings" class="layout-panel">
+      <div class="card select-panel">
+        <h3>⚙️ Настройки и Синхронизация</h3>
+
+        <!-- Gemini API Key -->
+        <div class="settings-group">
+          <h4 class="settings-group-title">🧠 Ключ Gemini API</h4>
+          <p class="settings-desc">Подключите свой ключ Gemini API для живого анализа с языковой моделью. Без ключа работает локальный симулятор.</p>
+          <div class="form-row">
+            <input type="password" id="gemini-api-key-input" placeholder="Вставьте ваш Gemini API Key" class="custom-input flex-1">
+            <button id="save-api-key-btn" class="btn-primary">Сохранить</button>
+          </div>
+          <div class="form-row-center">
+            <button id="clear-api-key-btn" class="btn-danger-outline hidden">Очистить Ключ</button>
+          </div>
+        </div>
+
+        <!-- Cloud Sync -->
+        <div class="settings-group">
+          <h4 class="settings-group-title">☁️ Облачная Синхронизация</h4>
+          <p class="settings-desc">Свяжите телефон и ПК одним кодом синхронизации.</p>
+          <div class="sync-status-row">
+            <span>Статус:</span>
+            <strong id="sync-status-text" class="text-yellow">Не подключено (Локально)</strong>
+          </div>
+          <div class="form-row">
+            <input type="text" id="sync-code-input" placeholder="Введите код (HERO-XXXX)" class="custom-input flex-1">
+            <button id="connect-sync-btn" class="btn-primary">Связать</button>
+          </div>
+          <div class="form-row-center">
+            <button id="generate-sync-btn" class="btn-outline">Создать Код Связи</button>
+          </div>
+        </div>
+
+        <!-- Android App APK -->
+        <div class="settings-group">
+          <h4 class="settings-group-title">🤖 Мобильное приложение (Android)</h4>
+          <p class="settings-desc">Скачайте скомпилированный APK-файл для установки игры как нативного приложения на Android.</p>
+          <a href="ai-game-master-rpg.apk" download class="btn-primary btn-full text-center" style="display: block; text-decoration: none; text-align: center;">📥 Скачать APK файл</a>
+        </div>
+
+        <!-- Reset Data -->
+        <div class="settings-group settings-group-last">
+          <h4 class="settings-group-title">⚠️ Сброс Аватара</h4>
+          <p class="settings-desc">Удаляет все сохранения и сбрасывает персонажа до первого уровня.</p>
+          <button id="reset-character-btn" class="btn-danger-outline btn-full">🗑️ Полное обнуление прогресса</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Mobile Bottom Tab Navigation -->
+  <nav class="mobile-nav">
+    <button class="nav-item active" data-target="panel-hero" id="nav-hero">
+      <span class="icon">👤</span>
+      <span class="lbl">Герой</span>
+    </button>
+    <button class="nav-item" data-target="panel-console" id="nav-console">
+      <span class="icon">💬</span>
+      <span class="lbl">Консоль</span>
+    </button>
+    <button class="nav-item" data-target="panel-quests" id="nav-quests">
+      <span class="icon">📋</span>
+      <span class="lbl">Задания</span>
+    </button>
+    <button class="nav-item" data-target="panel-threats" id="nav-threats">
+      <span class="icon">👹</span>
+      <span class="lbl">Угрозы</span>
+    </button>
+    <button class="nav-item" data-target="panel-settings" id="nav-settings">
+      <span class="icon">⚙️</span>
+      <span class="lbl">Настройки</span>
+    </button>
+  </nav>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Modal: Shadow Boss Battle Arena -->
+  <div id="battleModal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content border-crimson">
+      <h2 class="modal-title">БИТВА ВОЛИ: Странник VS Тень Лени</h2>
+      <div class="battle-arena-layout">
+        <div class="fighter player" id="battle-player">
+          <div class="fighter-name">Странник</div>
+          <div class="hp-bar-outer"><div class="hp-bar-inner bg-green" id="battle-p-hp" style="width: 100%;"></div></div>
+          <div class="fighter-hp-val" id="battle-p-hp-text">100 / 100 HP</div>
+          <div class="fighter-sprite">
+            <img id="battle-p-img" class="battle-sprite-img" src="avatar_tier1.png" alt="Игрок">
+          </div>
+        </div>
+        <div class="battle-vs">VS</div>
+        <div class="fighter boss" id="battle-boss">
+          <div class="fighter-name">Тень Лени</div>
+          <div class="hp-bar-outer"><div class="hp-bar-inner bg-red" id="battle-b-hp" style="width: 100%;"></div></div>
+          <div class="fighter-hp-val" id="battle-b-hp-text">150 / 150 HP</div>
+          <div class="fighter-sprite">
+            <img id="battle-b-img" class="battle-sprite-img" src="boss_stage1.png" alt="Босс">
+          </div>
+        </div>
+      </div>
+      <div class="battle-log" id="battle-log-container"></div>
+      <div class="modal-actions" id="battle-actions">
+        <button id="battle-start-btn" class="btn-danger-glowing btn-full">Начать поединок!</button>
+        <button id="battle-close-btn" class="btn-outline btn-full hidden">Вернуться в лагерь</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Level Up / Death Screen -->
+  <div id="statusModal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content select-panel" id="status-modal-box">
+      <h2 id="status-modal-title">УВЕЛИЧЕНИЕ УРОВНЯ!</h2>
+      <div class="status-modal-visual" id="status-modal-visual">🌟</div>
+      <p id="status-modal-desc">Вы перешли на новый уровень!</p>
+      <div class="modal-actions">
+        <button id="status-modal-btn" class="btn-primary btn-full">Принять</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Debugger Panel -->
+  <div id="debugPanel" class="debug-panel hidden">
+    <h3>Панель Отладки ГМ</h3>
+    <button id="debug-plus-24h" class="debug-btn">🕒 +24 Часа бездействия</button>
+    <button id="debug-grow-boss" class="debug-btn">👹 Напитать Босса лени</button>
+    <button id="debug-gain-xp" class="debug-btn">✨ Получить +40 XP</button>
+    <button id="debug-heal" class="debug-btn">❤️ Вылечить HP</button>
+    <button id="debug-clean-rust" class="debug-btn">🧼 Смыть ржавчину</button>
+    <button id="debug-reset-dailies" class="debug-btn">📋 Сбросить контракты</button>
+  </div>
+
+  <!-- Scripts -->
+</body>
+</html>
