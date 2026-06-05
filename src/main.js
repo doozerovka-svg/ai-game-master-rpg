@@ -1058,10 +1058,12 @@ function registerServiceWorker() {
       window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
     );
 
-    if (isLocalhost) {
+    const isCapacitor = !!window.Capacitor;
+
+    if (isLocalhost || isCapacitor) {
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         if (registrations.length > 0) {
-          console.log('SW found on localhost. Clearing caches and unregistering...');
+          console.log('SW found on localhost/Capacitor. Clearing caches and unregistering...');
           const promises = registrations.map(r => r.unregister());
           if ('caches' in window) {
             caches.keys().then((names) => {
@@ -1069,8 +1071,10 @@ function registerServiceWorker() {
             });
           }
           Promise.all(promises).then(() => {
-            console.log('Unregistered all service workers. Reloading...');
-            window.location.reload();
+            console.log('Unregistered all service workers.');
+            if (isLocalhost) {
+              window.location.reload();
+            }
           });
         }
       });
@@ -1078,7 +1082,7 @@ function registerServiceWorker() {
     }
 
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      navigator.serviceWorker.register('./sw.js', { scope: './' })
         .then(reg => {
           console.log('ServiceWorker registered with scope:', reg.scope);
         })
