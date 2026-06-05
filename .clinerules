@@ -1,0 +1,11 @@
+# Global Project Rules: AI Game Master RPG
+
+## 🚀 Token & Session Optimization
+1. **Scoped Reads Only**: Always use `view_file` with precise `StartLine` and `EndLine`. Never read full code files unless absolutely necessary.
+2. **Minimize CLI Output**: Filter long logs or build outputs using search utilities before parsing.
+3. **Surgical Edits**: Use exact target content matching for code modifications. Do not perform full file rewrites.
+
+## 📱 Mobile & Capacitor Constraints
+1. **Relative Paths**: Always use relative paths (`./`) in configs (Vite, asset urls). Absolute paths (e.g. starting with `/`) break in the native Android WebView.
+2. **Service Worker Restrictions**: Never register Service Workers inside the Capacitor WebView wrapper. They must only run on the production web URL.
+3. **Layout Limit**: Ensure the UI layout is responsive and centered with a max-width of `480px` for mobile app equivalence.
