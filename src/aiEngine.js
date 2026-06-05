@@ -13,7 +13,7 @@ const NEGATIVE_KEYWORDS = [
   'бургер', 'кола', 'сладкое', 'фастфуд', 'пиво', 'алкоголь', 'чипсы',
   'пицца', 'тортик', 'конфет', 'шоколад', 'ленился', 'пропустил', 'забыл',
   'не сделал', 'проспал', 'согрешил', 'косяк', 'срыв', 'объелся', 'газировк',
-  'пончик', 'фаст-фуд'
+  'пончик', 'фаст-фуд', 'сигарет', 'курил', 'курен', 'кальян', 'вейп', 'электронк', 'табак'
 ];
 
 const NEGATION_KEYWORDS = ['не ', 'нет', 'отказ', 'избеж', 'преодол', 'без '];
@@ -216,7 +216,7 @@ function calibrateActivity(text, charState) {
 
 // Live Gemini API Call
 async function analyzeWithGemini(text, apiKey, charState, imageBase64 = null) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
 
   const prompt = `
 You are the Game Master (Гейм-Мастер) of a dark fantasy solo RPG life-tracker. The player submits a workout log or daily habit report.
