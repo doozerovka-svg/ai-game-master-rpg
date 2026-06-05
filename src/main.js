@@ -415,10 +415,10 @@ function renderBadgesAndOverlays(state) {
 
 function renderAvatarEquipment(state) {
   const lvl = state.char.level;
-  let imgPath = '/avatar_tier1.png';
-  if (lvl >= 10) imgPath = '/avatar_tier4.png';
-  else if (lvl >= 6) imgPath = '/avatar_tier3.png';
-  else if (lvl >= 3) imgPath = '/avatar_tier2.png';
+  let imgPath = 'avatar_tier1.png';
+  if (lvl >= 10) imgPath = 'avatar_tier4.png';
+  else if (lvl >= 6) imgPath = 'avatar_tier3.png';
+  else if (lvl >= 3) imgPath = 'avatar_tier2.png';
 
   if (els.avatarImg && !els.avatarImg.src.endsWith(imgPath)) {
     els.avatarImg.src = imgPath;
@@ -539,9 +539,9 @@ function renderBoss(state) {
   els.bossRagePercent.innerText = `${rage}%`;
   els.bossRageBar.style.width = `${rage}%`;
 
-  let bossImgPath = '/boss_stage1.png';
-  if (rage >= 80) bossImgPath = '/boss_stage3.png';
-  else if (rage >= 40) bossImgPath = '/boss_stage2.png';
+  let bossImgPath = 'boss_stage1.png';
+  if (rage >= 80) bossImgPath = 'boss_stage3.png';
+  else if (rage >= 40) bossImgPath = 'boss_stage2.png';
 
   if (els.bossImg && !els.bossImg.src.endsWith(bossImgPath)) {
     els.bossImg.src = bossImgPath;
