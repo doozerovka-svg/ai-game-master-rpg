@@ -24,7 +24,18 @@ export function connectSync(syncCode) {
     .then(res => res.json())
     .then(remoteState => {
       if (remoteState) {
-        mergeStates(remoteState);
+        const remoteTime = remoteState.lastChecked || 0;
+        const localTime = state.lastChecked || 0;
+        
+        if (remoteTime > localTime) {
+          mergeStates(remoteState);
+        } else if (localTime > remoteTime) {
+          // Local state is newer, push it to database to update remote
+          pushStateToCloud();
+        } else {
+          // Timestamps match, just establish SSE channel
+          setupSse(syncCode);
+        }
       } else {
         // Database is empty, push our local state as initial
         pushStateToCloud();
@@ -41,6 +52,9 @@ export function connectSync(syncCode) {
 }
 
 function setupSse(syncCode) {
+  if (eventSource) {
+    eventSource.close();
+  }
   const sseUrl = `${DATABASE_URL}/ai_rpg_saves/${syncCode}.json`;
   eventSource = new EventSource(sseUrl);
 
@@ -117,13 +131,20 @@ function mergeStates(remoteState) {
 
   if (remoteTime > localTime) {
     // Remote is newer, replace local
-    // Keep local API key and sync settings just in case
+    // Keep local API key and sync settings
     const currentApiKey = localState.apiKey;
     const currentSync = localState.sync;
     
     // Copy remote fields
     Object.assign(localState.char, remoteState.char);
     Object.assign(localState.attrs, remoteState.attrs);
+    localState.inventory = remoteState.inventory || [];
+    localState.equipped = remoteState.equipped || {
+      weapon: null, offhand: null, helmet: null, feet: null, neck: null, hands: null, ring: null
+    };
+    localState.streaks = remoteState.streaks || {
+      str: 0, end: 0, agi: 0, habit: 0, totalWorkouts: 0
+    };
     localState.buffs = remoteState.buffs || [];
     localState.debuffs = remoteState.debuffs || {};
     localState.rustLevel = remoteState.rustLevel || 0;
@@ -132,6 +153,8 @@ function mergeStates(remoteState) {
     localState.logs = remoteState.logs || [];
     localState.lastChecked = remoteState.lastChecked;
     localState.lastActivityTime = remoteState.lastActivityTime;
+    localState.lastPureWillDeclaration = remoteState.lastPureWillDeclaration || 0;
+    localState.lastWeighInTime = remoteState.lastWeighInTime || 0;
     
     localState.apiKey = currentApiKey;
     localState.sync = currentSync;

@@ -552,6 +552,7 @@ let onStateChangeCallback = null;
 // =====================================================
 
 export function saveState() {
+  currentState.lastChecked = Date.now();
   localStorage.setItem('ai_rpg_state', JSON.stringify(currentState));
   if (onStateChangeCallback) onStateChangeCallback(currentState);
   if (currentState.sync.enabled && currentState.sync.code) {

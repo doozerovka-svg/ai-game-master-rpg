@@ -202,10 +202,21 @@ function renderUI() {
   renderQuests(state);
 
   // 10. Settings
-  if (els.geminiApiKeyInput) els.geminiApiKeyInput.value = state.apiKey || '';
-  if (state.apiKey) {
+  const envApiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+  if (els.geminiApiKeyInput) {
+    if (state.apiKey) {
+      els.geminiApiKeyInput.value = state.apiKey;
+    } else if (envApiKey) {
+      els.geminiApiKeyInput.value = '•••••••••••••••••••• (Автоматически из .env)';
+    } else {
+      els.geminiApiKeyInput.value = '';
+    }
+  }
+  if (state.apiKey || envApiKey) {
     if (els.clearApiKeyBtn) els.clearApiKeyBtn.classList.remove('hidden');
-    if (els.saveApiKeyBtn) els.saveApiKeyBtn.innerText = "Сохранено ✓";
+    if (els.saveApiKeyBtn) {
+      els.saveApiKeyBtn.innerText = state.apiKey ? "Сохранено ✓" : "Активен (.env) ✓";
+    }
   } else {
     if (els.clearApiKeyBtn) els.clearApiKeyBtn.classList.add('hidden');
     if (els.saveApiKeyBtn) els.saveApiKeyBtn.innerText = "Сохранить";
@@ -766,6 +777,10 @@ function bindEvents() {
   els.saveApiKeyBtn.addEventListener('click', () => {
     const key = els.geminiApiKeyInput.value.trim();
     if (!key) { alert("Пожалуйста, вставьте ключ!"); return; }
+    if (key.includes("Автоматически из .env")) {
+      alert("Этот ключ загружен автоматически из конфигурационного файла (.env) и уже активен!");
+      return;
+    }
     const state = getState();
     state.apiKey = key;
     saveState();
@@ -915,7 +930,8 @@ async function handleActivitySubmit() {
   els.submitActivityBtn.innerText = "Анализ ГМ...";
 
   const state = getState();
-  const result = await aiEngine.analyzeActivity(text, state.apiKey, state, selectedMediaBase64);
+  const effectiveApiKey = state.apiKey || import.meta.env.VITE_GEMINI_API_KEY || '';
+  const result = await aiEngine.analyzeActivity(text, effectiveApiKey, state, selectedMediaBase64);
 
   const btnRect = els.submitActivityBtn.getBoundingClientRect();
   let goldEarned = 0;
@@ -945,10 +961,12 @@ async function handleActivitySubmit() {
 
   els.gmText.innerText = result.narrative;
 
+  const gmSpeaker = result.isGemini ? "🤖 Гейм-Мастер" : "🔮 Гейм-Мастер (Симулятор)";
+
   if (result.isNegative) {
-    addLogEntry("Гейм-Мастер", text, 'fight', `Грейд: ${result.rarity} | Нанесено: -${result.damage} HP | Тень +${result.bossRageIncrease}%`);
+    addLogEntry(gmSpeaker, text, 'fight', `Грейд: ${result.rarity} | Нанесено: -${result.damage} HP | Тень +${result.bossRageIncrease}%`);
   } else {
-    addLogEntry("Гейм-Мастер", text, 'gm', `Грейд: ${result.rarity} | +${result.xp} XP | +${goldEarned} GP`);
+    addLogEntry(gmSpeaker, text, 'gm', `Грейд: ${result.rarity} | +${result.xp} XP | +${goldEarned} GP`);
   }
 
   els.actionInput.value = '';

@@ -279,22 +279,24 @@ Return ONLY a valid JSON object matching this schema (do not output markdown for
   const cleanJson = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
   return JSON.parse(cleanJson);
 }
-
 // Exported Interface
 export const aiEngine = {
   async analyzeActivity(text, apiKey, charState, imageBase64 = null) {
-    if (apiKey && apiKey.trim()) {
+    if (apiKey && apiKey.trim() && !apiKey.includes("Автоматически из .env")) {
       try {
-        return await analyzeWithGemini(text, apiKey, charState, imageBase64);
+        const result = await analyzeWithGemini(text, apiKey, charState, imageBase64);
+        return { ...result, isGemini: true };
       } catch (e) {
         console.warn("Gemini API failed or key is invalid, falling back to local simulator", e);
-        return calibrateActivity(text, charState);
+        const result = calibrateActivity(text, charState);
+        return { ...result, isGemini: false };
       }
     } else {
       // Return local simulated response
       return new Promise((resolve) => {
         setTimeout(() => {
-          resolve(calibrateActivity(text, charState));
+          const result = calibrateActivity(text, charState);
+          resolve({ ...result, isGemini: false });
         }, 800); // Small delay to feel like "AI thinking"
       });
     }
