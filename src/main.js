@@ -7,7 +7,10 @@ import {
   updateMetrics, submitMetrics, incrementHabitStreak,
   equipItem, unequipItem,
   completeDaily, refreshDailiesIfNeeded,
-  ITEM_CATALOG
+  ITEM_CATALOG,
+  ACHIEVEMENTS, checkAchievements, declareRestDay,
+  generateDungeonsIfNeeded, enterDungeon, exploreRoom, advanceRoom,
+  retreatFromDungeon, solveTrap, solveShrine, startMonsterBattle
 } from './state.js';
 import { aiEngine } from './aiEngine.js';
 import { soundEngine } from './sound.js';
@@ -82,6 +85,7 @@ const els = {
   inputWeight: document.getElementById('input-weight'),
   submitMetricsBtn: document.getElementById('submit-metrics-btn'),
   declarePureWillBtn: document.getElementById('declare-pure-will-btn'),
+  declareRestDayBtn: document.getElementById('declare-rest-day-btn'),
   subConfession: document.getElementById('sub-confession'),
   subShop: document.getElementById('sub-shop'),
   confessInput: document.getElementById('confess-input'),
@@ -94,6 +98,19 @@ const els = {
   bossRageBar: document.getElementById('boss-rage-bar'),
   bossImg: document.getElementById('boss-img'),
   triggerBossFightBtn: document.getElementById('trigger-boss-fight-btn'),
+  dungeonsListPanel: document.getElementById('dungeons-list-panel'),
+  dungeonsListContainer: document.getElementById('dungeons-list-container'),
+  dungeonEnergyVal: document.getElementById('dungeon-energy-val'),
+  dungeonEnergyBar: document.getElementById('dungeon-energy-bar'),
+  activeDungeonPanel: document.getElementById('active-dungeon-panel'),
+  activeDungeonName: document.getElementById('active-dungeon-name'),
+  activeDungeonRoom: document.getElementById('active-dungeon-room'),
+  encounterVisualContainer: document.getElementById('encounter-visual-container'),
+  encounterImg: document.getElementById('encounter-img'),
+  encounterIcon: document.getElementById('encounter-icon'),
+  encounterTitle: document.getElementById('encounter-title'),
+  encounterDesc: document.getElementById('encounter-desc'),
+  dungeonActionsContainer: document.getElementById('dungeon-actions-container'),
 
   // Settings tab
   syncCodeInput: document.getElementById('sync-code-input'),
@@ -131,6 +148,7 @@ const els = {
 };
 
 let selectedMediaBase64 = null;
+let currentFightMonster = null;
 
 // Initialize app
 window.addEventListener('DOMContentLoaded', () => {
@@ -227,6 +245,15 @@ function renderUI() {
 
   // 12. Render item catalog
   renderCatalog(state, currentCatalogFilter);
+
+  // 13. Render achievements
+  renderAchievements(state);
+
+  // 14. Render rest day button
+  renderRestDayButton(state);
+
+  // 15. Render Dungeons
+  renderDungeons(state);
 }
 
 let currentCatalogFilter = 'all';
@@ -387,6 +414,230 @@ function renderPureWillButton(state) {
   } else {
     els.declarePureWillBtn.disabled = false;
     els.declarePureWillBtn.innerText = "⚡ Заявить о Дне Чистой Воли (+15 WP)";
+  }
+}
+
+function renderRestDayButton(state) {
+  if (!els.declareRestDayBtn) return;
+  const now = Date.now();
+  const sevenDays = 7 * 24 * 3600000;
+  const lastRest = state.lastRestDay || 0;
+  const isAvailable = !lastRest || (now - lastRest >= sevenDays);
+
+  if (isAvailable) {
+    els.declareRestDayBtn.disabled = false;
+    els.declareRestDayBtn.innerText = "🛌 Объявить День Отдыха (раз в 7 дней)";
+  } else {
+    const daysLeft = ((sevenDays - (now - lastRest)) / (24 * 3600000)).toFixed(1);
+    els.declareRestDayBtn.disabled = true;
+    els.declareRestDayBtn.innerText = `🛌 День Отдыха через ${daysLeft} дн.`;
+  }
+}
+
+function renderAchievements(state) {
+  const container = document.getElementById('achievements-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const unlocked = state.achievements || [];
+
+  ACHIEVEMENTS.forEach(ach => {
+    const isUnlocked = unlocked.includes(ach.id);
+    const card = document.createElement('div');
+    card.className = `achievement-card ${isUnlocked ? 'unlocked' : 'locked'}`;
+    card.innerHTML = `
+      <div class="achievement-icon">${ach.icon}</div>
+      <div class="achievement-info">
+        <div class="achievement-name">${ach.name}</div>
+        <div class="achievement-desc">${ach.desc}</div>
+        <div class="achievement-reward">${isUnlocked ? '✅ ' + ach.rewardText : '🔒 ' + ach.rewardText}</div>
+      </div>
+      <div class="achievement-status">${isUnlocked ? '🏆' : '⬜'}</div>
+    `;
+    container.appendChild(card);
+  });
+}
+
+// =====================================================
+// DUNGEONS RENDER LOGIC
+// =====================================================
+
+function renderDungeons(state) {
+  if (!els.dungeonsListPanel || !els.activeDungeonPanel) return;
+
+  // Render Energy
+  const energy = state.dungeons.energy;
+  const maxEnergy = state.dungeons.maxEnergy;
+  els.dungeonEnergyVal.innerText = `${energy} / ${maxEnergy}`;
+  els.dungeonEnergyBar.style.width = `${(energy / maxEnergy) * 100}%`;
+
+  if (state.dungeons.activeDungeonId === null) {
+    // Show Dungeons List, Hide Active Dungeon Panel
+    els.activeDungeonPanel.classList.add('hidden');
+    els.dungeonsListPanel.classList.remove('hidden');
+
+    els.dungeonsListContainer.innerHTML = '';
+    
+    state.dungeons.list.forEach(dung => {
+      const card = document.createElement('div');
+      card.className = `dungeon-card${dung.completed ? ' completed' : ''}`;
+      
+      const badgeClass = dung.attribute; // str, agi, end
+      const badgeText = dung.attribute === 'str' ? 'Сила' : dung.attribute === 'agi' ? 'Ловкость' : 'Вынос.';
+      
+      card.innerHTML = `
+        <div class="dungeon-info">
+          <div class="dungeon-name">${dung.name}</div>
+          <div class="dungeon-meta">
+            <span class="dungeon-attr-badge ${badgeClass}">${badgeText}</span>
+            Сложность: <span class="dungeon-difficulty">${dung.difficulty}</span>
+          </div>
+        </div>
+        <div>
+          ${dung.completed 
+            ? '<span class="room-badge" style="background: rgba(82, 224, 156, 0.1); border-color: rgba(82, 224, 156, 0.3); color: #52e09c;">Зачищено ✓</span>'
+            : `<button class="btn-enter-dungeon" data-id="${dung.id}" ${energy < 10 ? 'disabled' : ''}>Войти (10⚡)</button>`
+          }
+        </div>
+      `;
+
+      if (!dung.completed) {
+        card.querySelector('.btn-enter-dungeon').addEventListener('click', () => {
+          const res = enterDungeon(dung.id);
+          if (res.success) {
+            soundEngine.playBossSpawn();
+            renderUI();
+          } else {
+            alert(res.message);
+          }
+        });
+      }
+
+      els.dungeonsListContainer.appendChild(card);
+    });
+  } else {
+    // Show Active Dungeon Panel, Hide List Panel
+    els.dungeonsListPanel.classList.add('hidden');
+    els.activeDungeonPanel.classList.remove('hidden');
+
+    renderActiveRoom(state);
+  }
+}
+
+function renderActiveRoom(state) {
+  const encounter = exploreRoom();
+  if (encounter.error) {
+    els.dungeonsListPanel.classList.remove('hidden');
+    els.activeDungeonPanel.classList.add('hidden');
+    return;
+  }
+
+  // Update room header
+  const dung = state.dungeons.list.find(d => d.id === state.dungeons.activeDungeonId);
+  els.activeDungeonName.innerText = dung ? dung.name : 'Подземелье';
+  els.activeDungeonRoom.innerText = `Комната ${encounter.room} / 5`;
+
+  // Render Room Encounter
+  els.encounterImg.classList.add('hidden');
+  els.encounterIcon.classList.remove('hidden');
+  els.dungeonActionsContainer.innerHTML = '';
+
+  if (encounter.type === 'monster' || encounter.type === 'boss') {
+    const monster = encounter.monster;
+    els.encounterTitle.innerText = monster.name;
+    els.encounterDesc.innerText = encounter.type === 'boss' 
+      ? `☠️ ВНИМАНИЕ: Перед вами Хранитель Подземелья! HP: ${monster.hp}, Урон: ${monster.dmg}. Сразитесь с ним за сокровища!`
+      : `В залах подземелья бродит враг! HP: ${monster.hp}, Урон: ${monster.dmg}.`;
+
+    if (monster.img) {
+      els.encounterImg.src = monster.img;
+      els.encounterImg.classList.remove('hidden');
+      els.encounterIcon.classList.add('hidden');
+    } else {
+      els.encounterIcon.innerText = encounter.type === 'boss' ? '👹' : '👾';
+    }
+
+    const fightBtn = document.createElement('button');
+    fightBtn.className = 'btn-dungeon-action primary';
+    fightBtn.innerHTML = `⚔️ Вступить в Бой (${monster.hp} HP)`;
+    fightBtn.addEventListener('click', () => {
+      currentFightMonster = monster;
+      soundEngine.playBossSpawn();
+      openBattleModal();
+    });
+
+    const runBtn = document.createElement('button');
+    runBtn.className = 'btn-dungeon-action outline';
+    runBtn.innerText = '🏃 Отступить в лагерь (прогресс сбросится)';
+    runBtn.addEventListener('click', () => {
+      retreatFromDungeon();
+      renderUI();
+    });
+
+    els.dungeonActionsContainer.appendChild(fightBtn);
+    els.dungeonActionsContainer.appendChild(runBtn);
+
+  } else if (encounter.type === 'trap') {
+    const trap = encounter.trap;
+    els.encounterTitle.innerText = `Ловушка: ${trap.name}`;
+    els.encounterDesc.innerText = `Вы попали в ловушку! Требуется проверка атрибута ${trap.type.toUpperCase()}. Сложность проверки: ${trap.difficulty}. У вас есть ${state.attrs[trap.type]} очков.`;
+    
+    els.encounterIcon.innerText = '🕸️';
+
+    const solveBtn = document.createElement('button');
+    solveBtn.className = 'btn-dungeon-action secondary';
+    solveBtn.innerHTML = `⚙️ Попытаться Обезвредить (${trap.type.toUpperCase()} + d20)`;
+    solveBtn.addEventListener('click', () => {
+      const res = solveTrap(trap.type, trap.difficulty);
+      alert(res.message);
+      renderUI();
+    });
+
+    const runBtn = document.createElement('button');
+    runBtn.className = 'btn-dungeon-action outline';
+    runBtn.innerText = '🏃 Отступить в лагерь (прогресс сбросится)';
+    runBtn.addEventListener('click', () => {
+      retreatFromDungeon();
+      renderUI();
+    });
+
+    els.dungeonActionsContainer.appendChild(solveBtn);
+    els.dungeonActionsContainer.appendChild(runBtn);
+
+  } else if (encounter.type === 'shrine') {
+    const shrine = encounter.shrine;
+    els.encounterTitle.innerText = shrine.name;
+    els.encounterDesc.innerText = 'Перед вами старинный алтарь, окутанный святым свечением. Помолитесь, чтобы получить благословение богов.';
+    
+    els.encounterIcon.innerText = '✨';
+
+    const prayBtn = document.createElement('button');
+    prayBtn.className = 'btn-dungeon-action success';
+    prayBtn.innerText = '🙏 Преклонить колени перед Алтарем';
+    prayBtn.addEventListener('click', () => {
+      const res = solveShrine();
+      alert(res.message);
+      renderUI();
+    });
+
+    els.dungeonActionsContainer.appendChild(prayBtn);
+
+  } else {
+    // Empty room
+    els.encounterTitle.innerText = 'Пустой Коридор';
+    els.encounterDesc.innerText = 'Тишина... В этой части подземелья никого нет. Путь свободен.';
+    
+    els.encounterIcon.innerText = '🕯️';
+
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'btn-dungeon-action success';
+    nextBtn.innerText = '➡️ Идти в следующую комнату';
+    nextBtn.addEventListener('click', () => {
+      advanceRoom();
+      renderUI();
+    });
+
+    els.dungeonActionsContainer.appendChild(nextBtn);
   }
 }
 
@@ -703,6 +954,21 @@ function bindEvents() {
     });
   }
 
+  // Rest Day declaration
+  if (els.declareRestDayBtn) {
+    els.declareRestDayBtn.addEventListener('click', () => {
+      const res = declareRestDay();
+      if (res.success) {
+        soundEngine.playHeal();
+        const btnRect = els.declareRestDayBtn.getBoundingClientRect();
+        particleEngine.spawnHealGlow(btnRect.left + btnRect.width / 2, btnRect.top, 20);
+        renderUI();
+      } else {
+        alert(res.message);
+      }
+    });
+  }
+
   // Submit weekly metrics
   if (els.submitMetricsBtn) {
     els.submitMetricsBtn.addEventListener('click', () => {
@@ -849,6 +1115,25 @@ function bindEvents() {
     renderUI();
   });
 
+  document.getElementById('debug-gain-dungeon-energy').addEventListener('click', () => {
+    const state = getState();
+    if (state.dungeons) {
+      state.dungeons.energy = Math.min(state.dungeons.maxEnergy, state.dungeons.energy + 50);
+      saveState();
+      soundEngine.playHeal();
+      renderUI();
+    }
+  });
+
+  document.getElementById('debug-reset-dungeons').addEventListener('click', () => {
+    const state = getState();
+    if (state.dungeons) {
+      state.dungeons.lastGeneratedDate = '';
+      generateDungeonsIfNeeded();
+      renderUI();
+    }
+  });
+
   // Global event listeners
   window.addEventListener('play-sound', (e) => {
     const type = e.detail;
@@ -930,7 +1215,9 @@ async function handleActivitySubmit() {
   els.submitActivityBtn.innerText = "Анализ ГМ...";
 
   const state = getState();
-  const effectiveApiKey = state.apiKey || import.meta.env.VITE_GEMINI_API_KEY || '';
+  // Pass clean key only (no placeholder strings)
+  const envKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+  const effectiveApiKey = (state.apiKey && !state.apiKey.includes('Автоматически')) ? state.apiKey : envKey;
   const result = await aiEngine.analyzeActivity(text, effectiveApiKey, state, selectedMediaBase64);
 
   const btnRect = els.submitActivityBtn.getBoundingClientRect();
@@ -988,20 +1275,47 @@ let battleInterval = null;
 function openBattleModal() {
   const state = getState();
   const charStats = state.attrs;
-  const bossRage = state.boss.rage;
-
+  
   const playerMaxHp = state.char.hp + (charStats.str + charStats.end + charStats.agi) * 2;
-  const bossMaxHp = 100 + (bossRage * 2);
+  
+  if (currentFightMonster) {
+    const mMaxHp = currentFightMonster.hp;
+    els.battlePHpText.innerText = `${playerMaxHp} / ${playerMaxHp} HP`;
+    els.battlePHp.style.width = '100%';
+    els.battleBHpText.innerText = `${mMaxHp} / ${mMaxHp} HP`;
+    els.battleBHp.style.width = '100%';
+    
+    document.querySelector('#battleModal .modal-title').innerText = `ПОДЗЕМЕЛЬЕ: Вы VS ${currentFightMonster.name}`;
+    document.querySelector('#battle-boss .fighter-name').innerText = currentFightMonster.name;
 
-  els.battlePHpText.innerText = `${playerMaxHp} / ${playerMaxHp} HP`;
-  els.battlePHp.style.width = '100%';
-  els.battleBHpText.innerText = `${bossMaxHp} / ${bossMaxHp} HP`;
-  els.battleBHp.style.width = '100%';
+    if (els.battlePImg && els.avatarImg) els.battlePImg.src = els.avatarImg.src;
+    if (els.battleBImg) {
+      if (currentFightMonster.img) {
+        els.battleBImg.src = currentFightMonster.img;
+      } else {
+        els.battleBImg.src = 'boss_stage1.png';
+      }
+    }
+    
+    els.battleLogContainer.innerHTML = `<div class="log-line">Вы обнажаете меч перед существом: ${currentFightMonster.name}. Приготовиться к бою!</div>`;
+  } else {
+    const bossRage = state.boss.rage;
+    const bossMaxHp = 100 + (bossRage * 2);
 
-  if (els.battlePImg && els.avatarImg) els.battlePImg.src = els.avatarImg.src;
-  if (els.battleBImg && els.bossImg) els.battleBImg.src = els.bossImg.src;
+    els.battlePHpText.innerText = `${playerMaxHp} / ${playerMaxHp} HP`;
+    els.battlePHp.style.width = '100%';
+    els.battleBHpText.innerText = `${bossMaxHp} / ${bossMaxHp} HP`;
+    els.battleBHp.style.width = '100%';
 
-  els.battleLogContainer.innerHTML = `<div class="log-line">Вы стоите лицом к лицу с Тенью вашей лени. Её ярость равна ${bossRage}%. Нажмите кнопку ниже!</div>`;
+    document.querySelector('#battleModal .modal-title').innerText = `БИТВА ВОЛИ: Странник VS Тень Лени`;
+    document.querySelector('#battle-boss .fighter-name').innerText = 'Тень Лени';
+
+    if (els.battlePImg && els.avatarImg) els.battlePImg.src = els.avatarImg.src;
+    if (els.battleBImg && els.bossImg) els.battleBImg.src = els.bossImg.src;
+
+    els.battleLogContainer.innerHTML = `<div class="log-line">Вы стоите лицом к лицу с Тенью вашей лени. Её ярость равна ${bossRage}%. Нажмите кнопку ниже!</div>`;
+  }
+
   els.battleStartBtn.classList.remove('hidden');
   els.battleCloseBtn.classList.add('hidden');
   els.battleModal.classList.add('active');
@@ -1010,9 +1324,18 @@ function openBattleModal() {
 function runBossBattleSimulation() {
   els.battleStartBtn.classList.add('hidden');
 
-  const simulation = startBossBattle();
+  const isDungeonMonster = currentFightMonster !== null;
+  const simulation = isDungeonMonster 
+    ? startMonsterBattle(currentFightMonster)
+    : startBossBattle();
+    
   let logIdx = 0;
   els.battleLogContainer.innerHTML = '';
+
+  const maxBossHp = isDungeonMonster 
+    ? currentFightMonster.hp 
+    : (100 + getState().boss.rage * 2);
+  const maxPlayerHp = getState().char.hp + (getState().attrs.str + getState().attrs.end + getState().attrs.agi) * 2;
 
   battleInterval = setInterval(() => {
     if (logIdx < simulation.log.length) {
@@ -1032,26 +1355,26 @@ function runBossBattleSimulation() {
         soundEngine.playXp();
         particleEngine.spawnXpSparks(window.innerWidth * 0.7, window.innerHeight * 0.4, 8);
       }
-      if (line.type.includes('boss')) {
+      if (line.type.includes('boss') || line.type.includes('shadow')) {
         soundEngine.playDamage();
         window.dispatchEvent(new CustomEvent('shake-screen'));
         particleEngine.spawnBloodSplash(window.innerWidth * 0.3, window.innerHeight * 0.4, 10);
       }
 
-      if (line.text.includes('Теневому Боссу')) {
+      if (line.text.includes('Теневому Боссу') || line.text.includes('врагу')) {
         const match = line.text.match(/наносит.* (\d+) урона/);
         if (match) {
           simulation.b_hp_max = Math.max(0, simulation.b_hp_max - parseInt(match[1]));
           els.battleBHpText.innerText = `${simulation.b_hp_max} HP`;
-          els.battleBHp.style.width = `${(simulation.b_hp_max / (100 + getState().boss.rage * 2)) * 100}%`;
+          els.battleBHp.style.width = `${(simulation.b_hp_max / maxBossHp) * 100}%`;
         }
       }
-      if (line.text.includes('Тень наносит') || line.text.includes('Амулет поглощает')) {
+      if (line.text.includes('Тень наносит') || line.text.includes('Амулет поглощает') || line.text.includes('наносит')) {
         const match = line.text.match(/наносит.* (\d+) урона/);
         if (match) {
           simulation.p_hp_max = Math.max(0, simulation.p_hp_max - parseInt(match[1]));
           els.battlePHpText.innerText = `${simulation.p_hp_max} HP`;
-          els.battlePHp.style.width = `${(simulation.p_hp_max / (getState().char.hp + (getState().attrs.str + getState().attrs.end + getState().attrs.agi) * 2)) * 100}%`;
+          els.battlePHp.style.width = `${(simulation.p_hp_max / maxPlayerHp) * 100}%`;
         }
       }
 
@@ -1060,6 +1383,7 @@ function runBossBattleSimulation() {
       clearInterval(battleInterval);
       battleInterval = null;
       els.battleCloseBtn.classList.remove('hidden');
+      currentFightMonster = null;
     }
   }, 900);
 }

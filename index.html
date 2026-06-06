@@ -179,6 +179,13 @@
           <div class="bag-items-grid" id="bag-items-container"></div>
         </div>
       </div>
+
+      <!-- Achievements -->
+      <div class="card achievements-card">
+        <h3>🏆 Достижения</h3>
+        <p class="section-desc">Выполняй вехи, чтобы получить особые награды!</p>
+        <div id="achievements-container" class="achievements-list"></div>
+      </div>
     </section>
 
     <!-- ===== TAB 2: КОНСОЛЬ ===== -->
@@ -279,6 +286,9 @@
           <div class="pure-will-row">
             <button id="declare-pure-will-btn" class="btn-success-glowing btn-full">⚡ Заявить о Дне Чистой Воли (+15 WP)</button>
           </div>
+          <div class="rest-day-row">
+            <button id="declare-rest-day-btn" class="btn-rest-day btn-full">🛌 Объявить День Отдыха (раз в 7 дней)</button>
+          </div>
           <div class="confess-divider">— Исповедь слабостей —</div>
           <textarea id="confess-input" placeholder="Опиши свой проступок честно..." rows="2"></textarea>
           <button id="submit-confession-btn" class="btn-warning-outline">🙏 Совершить Исповедь (-25 HP, +10 WP)</button>
@@ -352,37 +362,43 @@
       </div>
 
       <!-- Boss Mechanics Info -->
-      <div class="card boss-info-card">
-        <h3>📖 Механики Штрафов</h3>
-        <div class="mechanics-list">
-          <div class="mechanic-row">
-            <span class="mechanic-icon">😴</span>
-            <div class="mechanic-text">
-              <strong>24ч без тренировок</strong>
-              <span>Босс +20% ярости, ржавчина на аватаре</span>
-            </div>
+      <!-- Dungeons Map Section -->
+      <div class="card dungeons-card" id="dungeons-list-panel">
+        <h3>🗺️ Доступные Подземелья</h3>
+        <p class="section-desc">Исследуй опасные зоны, зарабатывая золото и редкую экипировку!</p>
+        
+        <div class="dungeon-energy-row">
+          <span>⚡ Энергия Походов: <strong id="dungeon-energy-val">30 / 100</strong></span>
+          <div class="dungeon-energy-bar-outer">
+            <div id="dungeon-energy-bar" class="dungeon-energy-bar-inner" style="width: 30%;"></div>
           </div>
-          <div class="mechanic-row">
-            <span class="mechanic-icon">📋</span>
-            <div class="mechanic-text">
-              <strong>Невыполненный контракт</strong>
-              <span>Босс +10% за каждый просроченный</span>
-            </div>
+        </div>
+
+        <div id="dungeons-list-container" class="dungeons-list">
+          <!-- Filled dynamically by main.js -->
+        </div>
+      </div>
+
+      <!-- Active Dungeon Room Passage -->
+      <div class="card active-dungeon-card hidden" id="active-dungeon-panel">
+        <div class="active-dungeon-header">
+          <h3 id="active-dungeon-name">Название подземелья</h3>
+          <span id="active-dungeon-room" class="room-badge">Комната 1 / 5</span>
+        </div>
+        
+        <div class="dungeon-encounter-box">
+          <div class="encounter-visual" id="encounter-visual-container">
+            <img id="encounter-img" class="encounter-img-element hidden" src="" alt="Монстр">
+            <span id="encounter-icon" class="encounter-icon-element">❓</span>
           </div>
-          <div class="mechanic-row">
-            <span class="mechanic-icon">⚖️</span>
-            <div class="mechanic-text">
-              <strong>Просрочен взвешивания-квест</strong>
-              <span>Босс +15% ярости</span>
-            </div>
+          <div class="encounter-details">
+            <h4 id="encounter-title">Поиск пути...</h4>
+            <p id="encounter-desc" class="mini-desc">Загрузка комнаты подземелья...</p>
           </div>
-          <div class="mechanic-row">
-            <span class="mechanic-icon">🍔</span>
-            <div class="mechanic-text">
-              <strong>Плохие привычки (ГМ-анализ)</strong>
-              <span>Урон HP + Босс усиливается</span>
-            </div>
-          </div>
+        </div>
+
+        <div class="dungeon-actions" id="dungeon-actions-container">
+          <!-- Action buttons injected dynamically -->
         </div>
       </div>
     </section>
@@ -455,8 +471,8 @@
       <span class="lbl">Задания</span>
     </button>
     <button class="nav-item" data-target="panel-threats" id="nav-threats">
-      <span class="icon">👹</span>
-      <span class="lbl">Угрозы</span>
+      <span class="icon">🗺️</span>
+      <span class="lbl">Карта</span>
     </button>
     <button class="nav-item" data-target="panel-settings" id="nav-settings">
       <span class="icon">⚙️</span>
@@ -520,6 +536,8 @@
     <button id="debug-heal" class="debug-btn">❤️ Вылечить HP</button>
     <button id="debug-clean-rust" class="debug-btn">🧼 Смыть ржавчину</button>
     <button id="debug-reset-dailies" class="debug-btn">📋 Сбросить контракты</button>
+    <button id="debug-gain-dungeon-energy" class="debug-btn">⚡ Получить +50 Энергии</button>
+    <button id="debug-reset-dungeons" class="debug-btn">🗺️ Сбросить подземелья</button>
   </div>
 
   <!-- Scripts -->

@@ -539,9 +539,19 @@ const DEFAULT_STATE = {
   },
   apiKey: '',
   lastPureWillDeclaration: 0,
+  confessionCount: 0,
+  lastRestDay: 0,
   lastWeighInTime: 0,
   lastChecked: Date.now(),
-  lastActivityTime: Date.now()
+  lastActivityTime: Date.now(),
+  dungeons: {
+    activeDungeonId: null,
+    currentRoom: 0,
+    energy: 30,
+    maxEnergy: 100,
+    lastGeneratedDate: '',
+    list: []
+  }
 };
 
 let currentState = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -573,6 +583,7 @@ export function loadState() {
       currentState.metrics = { ...DEFAULT_STATE.metrics, ...parsed.metrics };
       currentState.equipped = { ...DEFAULT_STATE.equipped, ...parsed.equipped };
       currentState.streaks = { ...DEFAULT_STATE.streaks, ...parsed.streaks };
+      currentState.dungeons = { ...DEFAULT_STATE.dungeons, ...parsed.dungeons };
     } catch (e) {
       console.error('Failed to parse saved state', e);
       currentState = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -582,6 +593,10 @@ export function loadState() {
     addLogEntry('Система', 'Аватар создан! Введите параметры тела на вкладке Задания.', 'system');
   }
   refreshDailiesIfNeeded();
+  generateDungeonsIfNeeded();
+  // Auto-cleanup logs older than 14 days
+  const fourteenDaysAgo = Date.now() - 14 * 24 * 3600000;
+  currentState.logs = currentState.logs.filter(log => log.timestamp > fourteenDaysAgo);
   processElapsedTime();
   saveState();
 }
@@ -620,8 +635,34 @@ function getTodayStr() {
 }
 
 function generateDailies() {
-  const shuffled = [...DAILY_POOL].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, 3).map(c => ({ ...c, completed: false, completedAt: null }));
+  // Smart dailies: prioritize the weakest attribute
+  const attrs = currentState.attrs;
+  const attrScores = [
+    { attr: 'str', val: attrs.str },
+    { attr: 'end', val: attrs.end },
+    { attr: 'agi', val: attrs.agi }
+  ];
+  attrScores.sort((a, b) => a.val - b.val);
+  const weakestAttr = attrScores[0].attr;
+
+  const weakPool = DAILY_POOL.filter(d => d.attr === weakestAttr);
+  const otherPool = DAILY_POOL.filter(d => d.attr !== weakestAttr);
+
+  const shuffledWeak = [...weakPool].sort(() => Math.random() - 0.5);
+  const shuffledOther = [...otherPool].sort(() => Math.random() - 0.5);
+
+  // 60% chance: pick 1 from weakest, 2 random. 40%: fully random
+  let picked = [];
+  if (Math.random() < 0.6 && shuffledWeak.length > 0) {
+    picked.push(shuffledWeak[0]);
+    const remaining = shuffledOther.filter(d => !picked.includes(d));
+    picked.push(...remaining.slice(0, 2));
+  } else {
+    const allShuffled = [...DAILY_POOL].sort(() => Math.random() - 0.5);
+    picked = allShuffled.slice(0, 3);
+  }
+
+  return picked.map(c => ({ ...c, completed: false, completedAt: null }));
 }
 
 export function refreshDailiesIfNeeded() {
@@ -733,7 +774,7 @@ export function takeDamage(amount, reason) {
 function triggerDeath() {
   currentState.char.level = Math.max(1, currentState.char.level - 1);
   currentState.char.xp = 0;
-  currentState.char.xpNeeded = 100 + (currentState.char.level - 1) * 20;
+  currentState.char.xpNeeded = Math.floor(100 * Math.pow(1.15, currentState.char.level - 1));
   currentState.char.hp = 50;
   if (currentState.buffs.length > 0) {
     currentState.buffs.pop();
@@ -760,6 +801,10 @@ export function gainXp(amount, attribute = null) {
   currentState.rustLevel = 0;
   currentState.lastActivityTime = Date.now();
   currentState.char.xp += actualAmount;
+
+  if (currentState.dungeons) {
+    currentState.dungeons.energy = Math.min(currentState.dungeons.maxEnergy, currentState.dungeons.energy + actualAmount);
+  }
   currentState.streaks.totalWorkouts++;
 
   if (attribute && attribute !== 'hp' && currentState.attrs[attribute] !== undefined) {
@@ -797,7 +842,7 @@ export function gainXp(amount, attribute = null) {
   while (currentState.char.xp >= currentState.char.xpNeeded) {
     currentState.char.xp -= currentState.char.xpNeeded;
     currentState.char.level += 1;
-    currentState.char.xpNeeded = 100 + (currentState.char.level - 1) * 20;
+    currentState.char.xpNeeded = Math.floor(100 * Math.pow(1.15, currentState.char.level - 1));
     currentState.char.hp = currentState.char.maxHp;
     leveledUp = true;
   }
@@ -812,6 +857,7 @@ export function gainXp(amount, attribute = null) {
     window.dispatchEvent(new CustomEvent('play-sound', { detail: 'xp' }));
   }
 
+  checkAchievements();
   saveState();
 }
 
@@ -899,8 +945,10 @@ export function submitConfession(text) {
   const wpGain = 10;
   takeDamage(hpLoss, `Добровольное признание: "${text}"`);
   currentState.char.willpower += wpGain;
+  currentState.confessionCount = (currentState.confessionCount || 0) + 1;
   addLogEntry('Исповедальня', `Признание: "${text}". -${hpLoss} HP, +${wpGain} WP`, 'confession');
   window.dispatchEvent(new CustomEvent('play-sound', { detail: 'heal' }));
+  checkAchievements();
   saveState();
 }
 
@@ -931,6 +979,7 @@ export function declarePureWill() {
   }
 
   addLogEntry('Алтарь Воли', 'День чистой воли подтверждён!', 'confession', 'Награда: +15 WP | Энтропия сброшена');
+  checkAchievements();
   saveState();
   return { success: true, message: 'День Чистой Воли заявлен! +15 WP.' };
 }
@@ -1037,6 +1086,7 @@ export function startBossBattle() {
   }
 
   if (hasShield) currentState.buffs.splice(shieldIdx, 1);
+  checkAchievements();
   saveState();
 
   return { won: p_won, p_hp_max: playerMaxHp, b_hp_max: bossMaxHp, log: battleLog };
@@ -1065,7 +1115,7 @@ export function submitMetrics(height, weight) {
     while (currentState.char.xp >= currentState.char.xpNeeded) {
       currentState.char.xp -= currentState.char.xpNeeded;
       currentState.char.level += 1;
-      currentState.char.xpNeeded = 100 + (currentState.char.level - 1) * 20;
+      currentState.char.xpNeeded = Math.floor(100 * Math.pow(1.15, currentState.char.level - 1));
       currentState.char.hp = currentState.char.maxHp;
       leveledUp = true;
     }
@@ -1100,4 +1150,457 @@ export function incrementHabitStreak() {
     addLogEntry('Сокровищница', `🟡 Получено: "${item.name}"!`, 'gm');
   }
   saveState();
+}
+
+// =====================================================
+// ACHIEVEMENTS
+// =====================================================
+export const ACHIEVEMENTS = [
+  {
+    id: 'first_blood',
+    name: 'Первый Бой',
+    desc: 'Победи Теневого Босса 1 раз',
+    icon: '⚔️',
+    check: (s) => (s.boss.wins || 0) >= 1,
+    reward: { gold: 20 },
+    rewardText: '+20 GP'
+  },
+  {
+    id: 'marathoner',
+    name: 'Марафонец',
+    desc: '10 кардио-тренировок',
+    icon: '🏃',
+    check: (s) => s.streaks.end >= 10,
+    reward: { gold: 50 },
+    rewardText: '+50 GP'
+  },
+  {
+    id: 'iron_will',
+    name: 'Железная Воля',
+    desc: '7 дней чистой воли подряд',
+    icon: '🔥',
+    check: (s) => s.streaks.habit >= 7,
+    reward: { willpower: 30 },
+    rewardText: '+30 WP'
+  },
+  {
+    id: 'unstoppable',
+    name: 'Неудержимый',
+    desc: 'Достигни 5 уровня',
+    icon: '🌟',
+    check: (s) => s.char.level >= 5,
+    reward: { gold: 100 },
+    rewardText: '+100 GP'
+  },
+  {
+    id: 'titan',
+    name: 'Титан',
+    desc: 'Набери 25 Силы',
+    icon: '💪',
+    check: (s) => s.attrs.str >= 25,
+    reward: { allStats: 1 },
+    rewardText: '+1 ко всем атрибутам'
+  },
+  {
+    id: 'confessor',
+    name: 'Исповедник',
+    desc: '5 исповедей',
+    icon: '🙏',
+    check: (s) => (s.confessionCount || 0) >= 5,
+    reward: { willpower: 20 },
+    rewardText: '+20 WP'
+  }
+];
+
+export function checkAchievements() {
+  const newlyUnlocked = [];
+  if (!currentState.achievements) currentState.achievements = [];
+
+  for (const ach of ACHIEVEMENTS) {
+    if (currentState.achievements.includes(ach.id)) continue;
+    if (ach.check(currentState)) {
+      currentState.achievements.push(ach.id);
+      // Apply reward
+      if (ach.reward.gold) currentState.char.gold += ach.reward.gold;
+      if (ach.reward.willpower) currentState.char.willpower += ach.reward.willpower;
+      if (ach.reward.allStats) {
+        currentState.attrs.str += ach.reward.allStats;
+        currentState.attrs.end += ach.reward.allStats;
+        currentState.attrs.agi += ach.reward.allStats;
+      }
+      addLogEntry('Достижение', `🏆 Получено: "${ach.name}"! ${ach.rewardText}`, 'system');
+      window.dispatchEvent(new CustomEvent('show-status-popup', {
+        detail: { title: '🏆 ДОСТИЖЕНИЕ!', desc: `"${ach.name}" — ${ach.desc}. Награда: ${ach.rewardText}`, visual: ach.icon }
+      }));
+      window.dispatchEvent(new CustomEvent('play-sound', { detail: 'levelup' }));
+      newlyUnlocked.push(ach.id);
+    }
+  }
+  if (newlyUnlocked.length > 0) saveState();
+  return newlyUnlocked;
+}
+
+// =====================================================
+// REST DAY
+// =====================================================
+export function declareRestDay() {
+  const now = Date.now();
+  const sevenDays = 7 * 24 * 3600000;
+
+  if (currentState.lastRestDay && (now - currentState.lastRestDay < sevenDays)) {
+    const daysLeft = ((sevenDays - (now - currentState.lastRestDay)) / (24 * 3600000)).toFixed(1);
+    return { success: false, message: `День отдыха уже использован. Следующий через ${daysLeft} дн.` };
+  }
+
+  currentState.lastRestDay = now;
+  currentState.lastActivityTime = now;
+  currentState.rustLevel = 0;
+
+  addLogEntry('Система', '🛌 День Отдыха объявлен! Ржавчина снята. Восстанавливай силы, воин.', 'system');
+  saveState();
+  return { success: true, message: 'День Отдыха! Ржавчина снята, таймер бездействия сброшен.' };
+}
+
+// =====================================================
+// DUNGEONS GAME MECHANICS
+// =====================================================
+
+export const DUNGEON_TEMPLATES = {
+  sewers: {
+    id: 'sewers',
+    name: 'Канализация Уныния',
+    attribute: 'str',
+    difficulty: 'Легко',
+    bossName: 'Грязевой Слизень',
+    bossHp: 80,
+    bossDmg: 7,
+    img: 'dungeon_sludge.png',
+    monsterPool: [
+      { name: 'Сточный Крысеныш', hp: 30, dmg: 3, img: 'dungeon_sludge.png' },
+      { name: 'Слизень Лени', hp: 40, dmg: 4, img: 'dungeon_sludge.png' }
+    ]
+  },
+  ruins: {
+    id: 'ruins',
+    name: 'Забытые Руины Прокрастинации',
+    attribute: 'agi',
+    difficulty: 'Средне',
+    bossName: 'Рыцарь Потерянного Времени',
+    bossHp: 150,
+    bossDmg: 11,
+    img: 'dungeon_knight.png',
+    monsterPool: [
+      { name: 'Каменный Голем Откладывания', hp: 60, dmg: 6, img: 'dungeon_knight.png' },
+      { name: 'Скелет-Спящий', hp: 50, dmg: 5, img: 'dungeon_knight.png' }
+    ]
+  },
+  caverns: {
+    id: 'caverns',
+    name: 'Огненные Пещеры Выгорания',
+    attribute: 'end',
+    difficulty: 'Сложно',
+    bossName: 'Лорд Выгорания',
+    bossHp: 240,
+    bossDmg: 16,
+    img: 'dungeon_burnout.png',
+    monsterPool: [
+      { name: 'Огненный Череп Суеты', hp: 80, dmg: 9, img: 'dungeon_burnout.png' },
+      { name: 'Пепельный Бес', hp: 70, dmg: 8, img: 'dungeon_burnout.png' }
+    ]
+  }
+};
+
+export function generateDungeonsIfNeeded() {
+  const now = new Date();
+  const dateStr = now.toISOString().split('T')[0];
+
+  if (!currentState.dungeons) {
+    currentState.dungeons = {
+      activeDungeonId: null,
+      currentRoom: 0,
+      energy: 30,
+      maxEnergy: 100,
+      lastGeneratedDate: '',
+      list: []
+    };
+  }
+
+  if (currentState.dungeons.lastGeneratedDate !== dateStr) {
+    currentState.dungeons.lastGeneratedDate = dateStr;
+    currentState.dungeons.list = [
+      { ...DUNGEON_TEMPLATES.sewers, completed: false },
+      { ...DUNGEON_TEMPLATES.ruins, completed: false },
+      { ...DUNGEON_TEMPLATES.caverns, completed: false }
+    ];
+    // Give daily base energy
+    currentState.dungeons.energy = Math.min(currentState.dungeons.maxEnergy, currentState.dungeons.energy + 30);
+    // Reset active dungeon progress if new day starts
+    currentState.dungeons.activeDungeonId = null;
+    currentState.dungeons.currentRoom = 0;
+    addLogEntry('Система', '🗺️ Подземелья обновились! Получено +30 Энергии Походов.', 'system');
+    saveState();
+  }
+}
+
+export function enterDungeon(dungeonId) {
+  if (currentState.dungeons.energy < 10) {
+    return { success: false, message: 'Недостаточно Энергии Походов (требуется 10)!' };
+  }
+
+  const dung = currentState.dungeons.list.find(d => d.id === dungeonId);
+  if (!dung) {
+    return { success: false, message: 'Подземелье не найдено!' };
+  }
+  if (dung.completed) {
+    return { success: false, message: 'Это подземелье уже зачищено сегодня!' };
+  }
+
+  currentState.dungeons.activeDungeonId = dungeonId;
+  currentState.dungeons.currentRoom = 1;
+  currentState.dungeons.energy -= 10;
+  addLogEntry('Поход', `Вы вошли в подземелье "${dung.name}". Затрачено 10 энергии.`, 'system');
+  saveState();
+  return { success: true };
+}
+
+export function exploreRoom() {
+  const dId = currentState.dungeons.activeDungeonId;
+  const currentRoom = currentState.dungeons.currentRoom;
+  const dung = currentState.dungeons.list.find(d => d.id === dId);
+
+  if (!dung || currentRoom === 0) {
+    return { error: 'Вы не в подземелье!' };
+  }
+
+  // Room 5 is always the Boss
+  if (currentRoom === 5) {
+    return {
+      type: 'boss',
+      room: 5,
+      monster: {
+        name: dung.bossName,
+        hp: dung.bossHp,
+        dmg: dung.bossDmg,
+        img: dung.img,
+        isBoss: true
+      }
+    };
+  }
+
+  // Rooms 1-4 random encounters
+  // 40% monster, 30% trap, 20% shrine, 10% empty
+  const rand = Math.random();
+  if (rand < 0.4) {
+    // Spawn random monster from template pool
+    const monsterTemplate = dung.monsterPool[Math.floor(Math.random() * dung.monsterPool.length)];
+    return {
+      type: 'monster',
+      room: currentRoom,
+      monster: { ...monsterTemplate, isBoss: false }
+    };
+  } else if (rand < 0.7) {
+    // Trap
+    const trapTypes = ['str', 'agi', 'end'];
+    const trapType = trapTypes[Math.floor(Math.random() * trapTypes.length)];
+    const difficulty = 5 + currentState.char.level * 2;
+    return {
+      type: 'trap',
+      room: currentRoom,
+      trap: {
+        type: trapType,
+        difficulty: difficulty,
+        name: trapType === 'str' ? 'Падающие Камни' : trapType === 'agi' ? 'Стрелы-ловушки' : 'Ядовитый Газ'
+      }
+    };
+  } else if (rand < 0.9) {
+    // Shrine
+    return {
+      type: 'shrine',
+      room: currentRoom,
+      shrine: {
+        name: 'Древний Алтарь'
+      }
+    };
+  } else {
+    // Empty room
+    return {
+      type: 'empty',
+      room: currentRoom
+    };
+  }
+}
+
+export function advanceRoom() {
+  if (currentState.dungeons.currentRoom < 5) {
+    currentState.dungeons.currentRoom++;
+    saveState();
+    return true;
+  }
+  return false;
+}
+
+export function retreatFromDungeon() {
+  const dId = currentState.dungeons.activeDungeonId;
+  const dung = currentState.dungeons.list.find(d => d.id === dId);
+  const name = dung ? dung.name : 'Подземелье';
+  currentState.dungeons.activeDungeonId = null;
+  currentState.dungeons.currentRoom = 0;
+  addLogEntry('Поход', `Вы отступили из подземелья "${name}". Прогресс потерян.`, 'system');
+  saveState();
+}
+
+export function solveTrap(trapType, difficulty) {
+  const playerStat = currentState.attrs[trapType] || 10;
+  // Roll d20
+  const roll = Math.floor(Math.random() * 20) + 1;
+  const total = playerStat + roll;
+  const success = total >= difficulty;
+
+  if (success) {
+    addLogEntry('Ловушка', `Ловушка обезврежена! Проверка: ${total} vs Сложность ${difficulty}.`, 'system');
+    advanceRoom();
+    saveState();
+    return { success: true, roll, total, message: `Успех! Вы обошли ловушку (Кубик: ${roll} + ${trapType.toUpperCase()}: ${playerStat} = ${total} vs Сложность ${difficulty})` };
+  } else {
+    const dmg = 15 + currentState.char.level * 2;
+    currentState.char.hp = Math.max(0, currentState.char.hp - dmg);
+    addLogEntry('Ловушка', `Провал ловушки! Получено ${dmg} урона. Проверка: ${total} vs Сложность ${difficulty}.`, 'fight');
+    let dead = currentState.char.hp <= 0;
+    if (dead) {
+      triggerDeath();
+      currentState.dungeons.activeDungeonId = null;
+      currentState.dungeons.currentRoom = 0;
+    }
+    saveState();
+    return {
+      success: false,
+      roll,
+      total,
+      damage: dmg,
+      dead,
+      message: `Провал! Вы попали в ловушку и получили ${dmg} урона (Кубик: ${roll} + ${trapType.toUpperCase()}: ${playerStat} = ${total} vs Сложность ${difficulty})`
+    };
+  }
+}
+
+export function solveShrine() {
+  // Restore 25% max HP or give 30 gold
+  const rand = Math.random();
+  if (rand < 0.6) {
+    const healAmount = Math.floor(currentState.char.maxHp * 0.25);
+    currentState.char.hp = Math.min(currentState.char.maxHp, currentState.char.hp + healAmount);
+    addLogEntry('Алтарь', `Благословение алтаря восстановило ${healAmount} HP.`, 'system');
+    advanceRoom();
+    saveState();
+    return { type: 'heal', amount: healAmount, message: `Благословение! Вы восстановили ${healAmount} HP.` };
+  } else {
+    currentState.char.gold += 35;
+    addLogEntry('Алтарь', `Вы нашли подношение золота на алтаре: +35 GP.`, 'system');
+    advanceRoom();
+    saveState();
+    return { type: 'gold', amount: 35, message: `Подношение! На алтаре лежало 35 золотых монет.` };
+  }
+}
+
+export function startMonsterBattle(monster) {
+  const charStats = currentState.attrs;
+  const playerMaxHp = currentState.char.hp + (charStats.str + charStats.end + charStats.agi) * 2;
+  const monsterMaxHp = monster.hp;
+
+  let p_hp = playerMaxHp;
+  let m_hp = monsterMaxHp;
+
+  const battleLog = [];
+  battleLog.push({ text: `Бой начат! Ваши силы: ${playerMaxHp} HP. ${monster.name}: ${monsterMaxHp} HP.`, type: 'meta' });
+
+  // Equip check for shield/weapon bonuses
+  const shieldIdx = currentState.buffs.indexOf('shadow-shield');
+  const hasShield = shieldIdx > -1;
+
+  let turn = 1;
+  while (p_hp > 0 && m_hp > 0 && turn < 30) {
+    // Player turn
+    let p_dmg = Math.floor((charStats.str * 1.3 + charStats.agi * 0.4) * (0.8 + Math.random() * 0.4));
+    const isCrit = Math.random() < 0.15;
+    if (isCrit) {
+      p_dmg = Math.floor(p_dmg * 2);
+      battleLog.push({ text: `Раунд ${turn}: КРИТ! Вы наносите врагу ${p_dmg} урона.`, type: 'player-crit' });
+    } else {
+      battleLog.push({ text: `Раунд ${turn}: Вы наносите врагу ${p_dmg} урона.`, type: 'player' });
+    }
+    m_hp -= p_dmg;
+    if (m_hp <= 0) break;
+
+    // Monster turn
+    let m_dmg = Math.floor(monster.dmg * (0.8 + Math.random() * 0.4));
+    if (hasShield) {
+      m_dmg = Math.floor(m_dmg * 0.5);
+      battleLog.push({ text: `Раунд ${turn}: Щит поглощает урон! ${monster.name} наносит ${m_dmg} урона.`, type: 'boss-shield' });
+    } else {
+      battleLog.push({ text: `Раунд ${turn}: ${monster.name} наносит ${m_dmg} урона.`, type: 'boss' });
+    }
+    p_hp -= m_dmg;
+    turn++;
+  }
+
+  const p_won = m_hp <= 0;
+
+  if (p_won) {
+    if (monster.isBoss) {
+      const activeDungeon = currentState.dungeons.list.find(d => d.id === currentState.dungeons.activeDungeonId);
+      if (activeDungeon) activeDungeon.completed = true;
+
+      const goldWon = 40 + Math.floor(Math.random() * 40) + (currentState.char.level * 3);
+      currentState.char.gold += goldWon;
+      battleLog.push({ text: `ПОБЕДА НАД БОССОМ! Награда: +${goldWon} GP.`, type: 'victory' });
+      addLogEntry('Подземелье', `Победа над Боссом ${monster.name}! Награда: +${goldWon} GP.`, 'fight');
+
+      const rollDrop = Math.random() < 0.10;
+      let droppedItem = null;
+      if (rollDrop) {
+        const ownedItems = [
+          ...(currentState.inventory || []),
+          ...Object.values(currentState.equipped || {}).filter(Boolean)
+        ];
+        const unownedItems = Object.values(ITEM_CATALOG).filter(item => !ownedItems.includes(item.id));
+        if (unownedItems.length > 0) {
+          const item = unownedItems[Math.floor(Math.random() * unownedItems.length)];
+          currentState.inventory.push(item.id);
+          droppedItem = item;
+          const rarityEmoji = { common: '⚪', rare: '🔵', epic: '🟣', legendary: '🟡' }[item.rarity] || '⚪';
+          battleLog.push({ text: `🍀 СОКРОВИЩЕ: Вы нашли в сундуке босса "${item.name}" (${rarityEmoji} ${item.rarity.toUpperCase()})!`, type: 'victory' });
+          addLogEntry('Сокровищница', `🍀 Найдено в сундуке: "${item.name}"!`, 'gm');
+        }
+      }
+
+      if (!droppedItem) {
+        currentState.char.hp = Math.min(currentState.char.maxHp, currentState.char.hp + 20);
+        battleLog.push({ text: `Вы открыли сундук и нашли Зелье Восстановления (+20 HP восстановилось).`, type: 'victory' });
+      }
+
+      currentState.dungeons.activeDungeonId = null;
+      currentState.dungeons.currentRoom = 0;
+    } else {
+      battleLog.push({ text: `Вы победили ${monster.name}! Проход дальше свободен.`, type: 'victory' });
+      addLogEntry('Подземелье', `Победа над ${monster.name}.`, 'fight');
+      advanceRoom();
+    }
+  } else {
+    const goldLost = Math.min(currentState.char.gold, 20);
+    currentState.char.gold -= goldLost;
+    currentState.char.hp = 0;
+    triggerDeath();
+
+    battleLog.push({ text: `ПОРАЖЕНИЕ! Вы погибли в подземелье. Потеряно ${goldLost} GP.`, type: 'defeat' });
+    addLogEntry('Подземелье', `Вы пали в бою с ${monster.name}. Потеряно ${goldLost} GP.`, 'fight');
+
+    currentState.dungeons.activeDungeonId = null;
+    currentState.dungeons.currentRoom = 0;
+  }
+
+  if (hasShield) currentState.buffs.splice(shieldIdx, 1);
+  checkAchievements();
+  saveState();
+
+  return { won: p_won, p_hp_max: playerMaxHp, b_hp_max: monsterMaxHp, log: battleLog, isMonster: true, monsterName: monster.name };
 }

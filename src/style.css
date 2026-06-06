@@ -2590,3 +2590,584 @@ body {
     gap: 4px;
   }
 }
+
+/* =====================================================
+   ACHIEVEMENTS
+   ===================================================== */
+.achievements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.achievement-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.3s ease;
+}
+
+.achievement-card.unlocked {
+  background: linear-gradient(135deg, rgba(255, 183, 3, 0.08), rgba(157, 78, 221, 0.08));
+  border-color: rgba(255, 183, 3, 0.3);
+  box-shadow: 0 0 12px rgba(255, 183, 3, 0.1);
+}
+
+.achievement-card.locked {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+
+.achievement-icon {
+  font-size: 1.8rem;
+  min-width: 40px;
+  text-align: center;
+}
+
+.achievement-card.unlocked .achievement-icon {
+  filter: drop-shadow(0 0 6px rgba(255, 183, 3, 0.5));
+}
+
+.achievement-info {
+  flex: 1;
+}
+
+.achievement-name {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-primary, #e0e0e0);
+}
+
+.achievement-card.unlocked .achievement-name {
+  color: #ffb703;
+}
+
+.achievement-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #888);
+  margin-top: 2px;
+}
+
+.achievement-reward {
+  font-size: 0.7rem;
+  color: #52e09c;
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+.achievement-status {
+  font-size: 1.2rem;
+  min-width: 28px;
+  text-align: center;
+}
+
+/* =====================================================
+   REST DAY BUTTON
+   ===================================================== */
+.rest-day-row {
+  margin-top: 10px;
+}
+
+.btn-rest-day {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(82, 160, 224, 0.3);
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.catalog-item-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 2px;
+}
+
+.catalog-item-stat {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.catalog-item-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+  line-height: 1.3;
+}
+
+.catalog-status {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.catalog-status.equipped {
+  background: rgba(255, 183, 3, 0.2);
+  color: var(--gold);
+  border: 1px solid rgba(255, 183, 3, 0.4);
+}
+
+.catalog-status.owned {
+  background: rgba(0, 245, 212, 0.15);
+  color: var(--green);
+  border: 1px solid rgba(0, 245, 212, 0.3);
+}
+
+.catalog-status.locked {
+  background: rgba(255,255,255,0.05);
+  color: var(--text-muted);
+  border: 1px solid var(--border-neon);
+  font-size: 8px;
+}
+
+.catalog-rarity {
+  position: relative;
+  right: auto;
+  top: auto;
+  bottom: auto;
+  border-radius: var(--radius-sm);
+  padding: 2px 5px;
+  flex-shrink: 0;
+  font-size: 7px;
+}
+
+/* =====================================================
+   RESPONSIVE OVERRIDES FOR SMALL MOBILE PHONES (<380px)
+   ===================================================== */
+@media (max-width: 380px) {
+  .input-actions-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .media-upload-area {
+    max-height: none;
+    width: 100%;
+  }
+  
+  .media-label {
+    justify-content: center;
+    width: 100%;
+  }
+  
+  #submit-activity-btn {
+    width: 100%;
+  }
+  
+  .form-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  
+  .form-row .custom-input,
+  .form-row .btn-primary,
+  .form-row .btn-outline,
+  .form-row .btn-danger-outline {
+    width: 100%;
+  }
+  
+  .sync-status-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+/* =====================================================
+   ACHIEVEMENTS
+   ===================================================== */
+.achievements-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.achievement-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  transition: all 0.3s ease;
+}
+
+.achievement-card.unlocked {
+  background: linear-gradient(135deg, rgba(255, 183, 3, 0.08), rgba(157, 78, 221, 0.08));
+  border-color: rgba(255, 183, 3, 0.3);
+  box-shadow: 0 0 12px rgba(255, 183, 3, 0.1);
+}
+
+.achievement-card.locked {
+  opacity: 0.5;
+  filter: grayscale(0.6);
+}
+
+.achievement-icon {
+  font-size: 1.8rem;
+  min-width: 40px;
+  text-align: center;
+}
+
+.achievement-card.unlocked .achievement-icon {
+  filter: drop-shadow(0 0 6px rgba(255, 183, 3, 0.5));
+}
+
+.achievement-info {
+  flex: 1;
+}
+
+.achievement-name {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--text-primary, #e0e0e0);
+}
+
+.achievement-card.unlocked .achievement-name {
+  color: #ffb703;
+}
+
+.achievement-desc {
+  font-size: 0.75rem;
+  color: var(--text-secondary, #888);
+  margin-top: 2px;
+}
+
+.achievement-reward {
+  font-size: 0.7rem;
+  color: #52e09c;
+  font-weight: 600;
+  margin-top: 3px;
+}
+
+.achievement-status {
+  font-size: 1.2rem;
+  min-width: 28px;
+  text-align: center;
+}
+
+/* =====================================================
+   REST DAY BUTTON
+   ===================================================== */
+.rest-day-row {
+  margin-top: 10px;
+}
+
+.btn-rest-day {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid rgba(82, 160, 224, 0.3);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(82, 160, 224, 0.1), rgba(82, 224, 156, 0.05));
+  color: #7ec8e3;
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-rest-day:hover {
+  background: linear-gradient(135deg, rgba(82, 160, 224, 0.2), rgba(82, 224, 156, 0.1));
+  border-color: rgba(82, 160, 224, 0.5);
+  box-shadow: 0 0 15px rgba(82, 160, 224, 0.15);
+}
+
+.btn-rest-day:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+}
+
+/* =====================================================
+   DUNGEONS SYSTEM
+   ===================================================== */
+.dungeons-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.dungeon-energy-row {
+  margin: 15px 0 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.dungeon-energy-row span {
+  font-size: 0.85rem;
+  color: #7ec8e3;
+  font-weight: 600;
+}
+
+.dungeon-energy-bar-outer {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dungeon-energy-bar-inner {
+  height: 100%;
+  background: linear-gradient(90deg, #00b4d8, #0077b6);
+  box-shadow: 0 0 8px rgba(0, 180, 216, 0.5);
+  transition: width 0.4s ease;
+}
+
+.dungeon-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(20, 10, 35, 0.6), rgba(35, 15, 60, 0.4));
+  border: 1px solid rgba(157, 78, 221, 0.2);
+  border-radius: 14px;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.dungeon-card:hover {
+  border-color: rgba(157, 78, 221, 0.5);
+  box-shadow: 0 4px 15px rgba(157, 78, 221, 0.15);
+  transform: translateY(-2px);
+}
+
+.dungeon-card.completed {
+  opacity: 0.6;
+  border-color: rgba(82, 224, 156, 0.2);
+  background: linear-gradient(135deg, rgba(10, 35, 20, 0.4), rgba(15, 60, 30, 0.2));
+}
+
+.dungeon-card.completed:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.dungeon-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.dungeon-name {
+  font-family: 'Cinzel', serif;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.dungeon-card.completed .dungeon-name {
+  text-decoration: line-through;
+  color: #888;
+}
+
+.dungeon-meta {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.dungeon-attr-badge {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-right: 6px;
+}
+
+.dungeon-attr-badge.str { background: rgba(230, 57, 70, 0.15); color: #e63946; border: 1px solid rgba(230, 57, 70, 0.3); }
+.dungeon-attr-badge.agi { background: rgba(255, 183, 3, 0.15); color: #ffb703; border: 1px solid rgba(255, 183, 3, 0.3); }
+.dungeon-attr-badge.end { background: rgba(82, 224, 156, 0.15); color: #52e09c; border: 1px solid rgba(82, 224, 156, 0.3); }
+
+.dungeon-difficulty {
+  color: #ffb703;
+}
+
+.btn-enter-dungeon {
+  padding: 8px 16px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #7b2cbf, #5a189a);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  transition: all 0.2s ease;
+}
+
+.btn-enter-dungeon:hover {
+  background: linear-gradient(135deg, #9d4edd, #7b2cbf);
+  box-shadow: 0 0 10px rgba(157, 78, 221, 0.4);
+}
+
+.btn-enter-dungeon:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.05);
+  color: #666;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ACTIVE DUNGEON PANEL */
+.active-dungeon-card {
+  border-color: #7b2cbf;
+  box-shadow: 0 0 15px rgba(123, 44, 191, 0.2);
+  background: linear-gradient(180deg, rgba(20, 10, 35, 0.95), rgba(13, 7, 20, 0.98));
+}
+
+.active-dungeon-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 10px;
+  margin-bottom: 15px;
+}
+
+.active-dungeon-header h3 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.1rem;
+  color: #ffb703;
+}
+
+.room-badge {
+  background: rgba(123, 44, 191, 0.2);
+  border: 1px solid rgba(123, 44, 191, 0.4);
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #c77dff;
+}
+
+.dungeon-encounter-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.encounter-visual {
+  width: 140px;
+  height: 140px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle, rgba(123, 44, 191, 0.15) 0%, rgba(0, 0, 0, 0.5) 100%);
+  border: 2px solid rgba(123, 44, 191, 0.3);
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 0 20px rgba(123, 44, 191, 0.2);
+}
+
+.encounter-img-element {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation: floatEffect 4s ease-in-out infinite;
+}
+
+@keyframes floatEffect {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+  100% { transform: translateY(0px); }
+}
+
+.encounter-icon-element {
+  font-size: 3rem;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+}
+
+.encounter-details h4 {
+  font-family: 'Cinzel', serif;
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.dungeon-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn-dungeon-action {
+  width: 100%;
+  padding: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-dungeon-action.primary {
+  background: linear-gradient(135deg, #e63946, #b71c1c);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.btn-dungeon-action.primary:hover {
+  background: linear-gradient(135deg, #ff4d6d, #e63946);
+  box-shadow: 0 0 15px rgba(230, 57, 70, 0.4);
+}
+
+.btn-dungeon-action.secondary {
+  background: linear-gradient(135deg, #ffb703, #fb8500);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #0d0714;
+}
+.btn-dungeon-action.secondary:hover {
+  background: linear-gradient(135deg, #ffc83b, #ffb703);
+  box-shadow: 0 0 15px rgba(255, 183, 3, 0.4);
+}
+
+.btn-dungeon-action.success {
+  background: linear-gradient(135deg, #52e09c, #2a9d8f);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #0d0714;
+}
+.btn-dungeon-action.success:hover {
+  background: linear-gradient(135deg, #6cffd3, #52e09c);
+  box-shadow: 0 0 15px rgba(82, 224, 156, 0.4);
+}
+
+.btn-dungeon-action.outline {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+}
+.btn-dungeon-action.outline:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border-color: rgba(255, 255, 255, 0.2);
+}
