@@ -1394,43 +1394,20 @@ function runBossBattleSimulation() {
 
 function registerServiceWorker() {
   if ('serviceWorker' in navigator) {
-    const isLocalhost = Boolean(
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '[::1]' ||
-      window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/)
-    );
-
-    const isCapacitor = !!window.Capacitor;
-
-    if (isLocalhost || isCapacitor) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        if (registrations.length > 0) {
-          console.log('SW found on localhost/Capacitor. Clearing caches and unregistering...');
-          const promises = registrations.map(r => r.unregister());
-          if ('caches' in window) {
-            caches.keys().then((names) => {
-              names.forEach(name => caches.delete(name));
-            });
-          }
-          Promise.all(promises).then(() => {
-            console.log('Unregistered all service workers.');
-            if (isLocalhost) {
-              window.location.reload();
-            }
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      if (registrations.length > 0) {
+        console.log('SW found. Clearing caches and unregistering to force update...');
+        const promises = registrations.map(r => r.unregister());
+        if ('caches' in window) {
+          caches.keys().then((names) => {
+            names.forEach(name => caches.delete(name));
           });
         }
-      });
-      return;
-    }
-
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js', { scope: './' })
-        .then(reg => {
-          console.log('ServiceWorker registered with scope:', reg.scope);
-        })
-        .catch(err => {
-          console.warn('ServiceWorker registration failed:', err);
+        Promise.all(promises).then(() => {
+          console.log('Unregistered all service workers. Reloading page...');
+          window.location.reload();
         });
+      }
     });
   }
 }
